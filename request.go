@@ -158,7 +158,7 @@ func (s *Server) handleRequest(req *Request, conn conn) error {
 
 	//url := "http://114.116.250.219:9997/user/verifyUserURL?url=" + req.DestAddr.String() + "&port=" + port
 	//url := "http://192.168.8.43:9998/user/verifyUserURLNew?url=" + req.DestAddr.IP.String() + ":" + strconv.Itoa(req.DestAddr.Port) + "&port=" + port
-	url := "http://192.168.3.9:9998/user/verifyUserURLNew?url=" + req.DestAddr.IP.String() + ":" + strconv.Itoa(req.DestAddr.Port) + "&port=" + port
+	url := "http://127.0.0.1:9998/user/verifyUserURLNew?url=" + req.DestAddr.IP.String() + ":" + strconv.Itoa(req.DestAddr.Port) + "&port=" + port
 	println(url)
 	res, err := http.Get(url)
 	if err != nil {
