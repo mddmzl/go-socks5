@@ -3,7 +3,9 @@ package socks5
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -84,6 +86,7 @@ type Request struct {
 type conn interface {
 	Write([]byte) (int, error)
 	RemoteAddr() net.Addr
+	LocalAddr() net.Addr
 }
 
 // NewRequest creates a new Request from the tcp connection
@@ -101,6 +104,7 @@ func NewRequest(bufConn io.Reader) (*Request, error) {
 
 	// Read in the destination address
 	dest, err := readAddrSpec(bufConn)
+	//fmt.Println("conn remote ip port %s", dest.String())
 	if err != nil {
 		return nil, err
 	}
@@ -133,8 +137,58 @@ func (s *Server) handleRequest(req *Request, conn conn) error {
 		dest.IP = addr
 	}
 
+
 	// Apply any address rewrites
-	req.realDestAddr = req.DestAddr
+	//req.realDestAddr = req.DestAddr
+	//var rdb *redis.Client
+	//rdb = redis.NewClient(&redis.Options{
+	//	Addr:     "47.94.148.67:6379",
+	//	Password: "aoligei123", // no password set
+	//	DB:       0,          // use default DB
+	//})
+
+
+	index := strings.Index(conn.LocalAddr().String(), ":")
+	port := conn.LocalAddr().String()[index+1:]
+	remote_port := req.DestAddr.String()+ "," + conn.LocalAddr().String()
+	fmt.Println("remote ip&port is ",remote_port)
+	//readIpPort, err := rdb.Get(ctx, req.realDestAddr.String()+":"+strconv.Itoa(conn.LocalAddr().String())).Result()
+	//readIpPort, err := rdb.Get(ctx, req.realDestAddr.String()+port).Result()
+	//readIpPort, err := rdb.Get(ctx, req.realDestAddr.String()).Result()
+
+	//url := "http://114.116.250.219:9997/user/verifyUserURL?url=" + req.DestAddr.String() + "&port=" + port
+	//url := "http://192.168.8.43:9998/user/verifyUserURLNew?url=" + req.DestAddr.IP.String() + ":" + strconv.Itoa(req.DestAddr.Port) + "&port=" + port
+	url := "https://www.bdsecurity.ink:9998/user/verifyUserURLNew?url=" + req.DestAddr.IP.String() + ":" + strconv.Itoa(req.DestAddr.Port) + "&port=" + port
+	println(url)
+	res, err := http.Get(url)
+	if err != nil {
+		println("He")
+		return err
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		println("error")
+		return err
+	}
+	readIpPort := string(body)
+	println(readIpPort)
+
+	if err!=nil{
+		return nil
+	}
+	fmt.Println("redirt ip&port is ",readIpPort)
+	host, port, err := net.SplitHostPort(readIpPort)
+	if err != nil {
+		return fmt.Errorf("%q is not a valid address: %v", readIpPort, err)
+	}
+
+	req.realDestAddr = new(AddrSpec)
+	req.realDestAddr.IP = net.ParseIP(host)
+	req.realDestAddr.Port, err = strconv.Atoi(port)
+	if err != nil {
+		return nil
+	}
+
 	if s.config.Rewriter != nil {
 		ctx, req.realDestAddr = s.config.Rewriter.Rewrite(ctx, req)
 	}
